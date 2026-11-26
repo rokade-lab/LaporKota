@@ -1,0 +1,77 @@
+x-app: &app
+  image: laporkota-peserta:local
+  build: .
+  environment: &app-env
+    APP_ENV: local
+    DB_HOST: db
+    DB_NAME: laporkota_local
+    DB_USER: root
+    LOCAL_PROJECT: laporkota_local
+    FIXTURE_TEAMS: ${FIXTURE_TEAMS:-2}
+    AUTH_RATE_LIMIT: ${AUTH_RATE_LIMIT:-5}
+    AUTH_RATE_WINDOW: ${AUTH_RATE_WINDOW:-300}
+services:
+  db:
+    image: mysql:8.4.13@sha256:a81d043930e51745522bd5c430961cf8286f0a23f0a9a2a6e0108f7ea71b0902
+    environment:
+      MYSQL_ALLOW_EMPTY_PASSWORD: 'yes'
+    command:
+    - --skip-name-resolve
+    volumes:
+    - ./data/db:/var/lib/mysql
+    healthcheck:
+      test:
+      - CMD
+      - mysql
+      - --protocol=TCP
+      - -h127.0.0.1
+      - -uroot
+      - --batch
+      - --skip-column-names
+      - -e
+      - SELECT 1
+      interval: 2s
+      timeout: 3s
+      retries: 90
+    restart: unless-stopped
+  init:
+    <<: *app
+    command:
+    - php
+    - bin/lab.php
+    - setup
+    depends_on:
+      db:
+        condition: service_healthy
+    restart: 'no'
+  web:
+    <<: *app
+    environment:
+      <<: *app-env
+      UPLOAD_DIR: /data/uploads
+    command:
+    - php
+    - -S
+    - 0.0.0.0:8080
+    - -t
+    - public
+    - public/router.php
+    healthcheck:
+      test:
+      - CMD
+      - php
+      - -r
+      - $$s=@fsockopen("127.0.0.1",8080);if(!$$s)exit(1);fclose($$s);
+      interval: 2s
+      timeout: 2s
+      retries: 30
+    ports:
+    - 127.0.0.1:${LAB_PORT:-19082}:8080
+    volumes:
+    - ./data/uploads:/data/uploads
+    depends_on:
+      db:
+        condition: service_healthy
+      init:
+        condition: service_completed_successfully
+    restart: unless-stopped

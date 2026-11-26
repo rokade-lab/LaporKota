@@ -1,0 +1,9 @@
+{
+  "name": "laporkota/lab",
+  "description": "Fondasi lokal lab LaporKota",
+  "type": "project",
+  "require": {"php": "8.4.*", "ext-pdo_mysql": "*", "ext-mbstring": "*", "ext-fileinfo": "*", "ext-gd": "*"},
+  "require-dev": {"phpunit/phpunit": "11.5.50"},
+  "autoload": {"psr-4": {"LaporKota\\": "src/"}},
+  "config": {"sort-packages": true}
+}
